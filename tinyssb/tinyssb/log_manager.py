@@ -10,6 +10,8 @@ from tinyssb.dbg import *
 from tinyssb.exception import *
 from tinyssb.node import LOGTYPE_private, LOGTYPE_public, LOGTYPE_remote
 
+import shutil
+
 class LogManager:
 
     def __init__(self, identity, node, default_logs):
@@ -282,7 +284,8 @@ class LogManager:
         self.node.ks.dump(file_path + ".part")
 
         try:
-            os.system(f"mv {file_path}.part {file_path}")
+            # os.system(f"mv {file_path}.part {file_path}")
+            shutil.move(f'{file_path}.part', f'{file_path}')
         except Exception as ex:
             dbg(GRE, f"Problem in save_keys: {ex}")
         self.__save_key_lock.release()
@@ -304,7 +307,8 @@ class LogManager:
 
         with open(prefix + "dmxt.json.part", "w") as f:
             f.write(util.json_pp(dmx))
-        os.system(f"mv {prefix}dmxt.json.part {prefix}dmxt.json")
+        # os.system(f"mv {prefix}dmxt.json.part {prefix}dmxt.json")
+        shutil.move(f'{prefix}dmxt.json.part', f'{prefix}dmxt.json')
         return util.json_pp(dmx)
 
     def __load_dmxt(self):

@@ -6,6 +6,8 @@
 import base64
 import sys
 
+import select
+
 if sys.implementation.name == 'micropython':
     import binascii
     fromhex = binascii.unhexlify
@@ -51,5 +53,40 @@ def json_pp(d, indent=''):
         jsonstr += indent[:-2] + '}'
         return jsonstr
     return stringify(d)
+
+# select.poll() implementation compatible with Windows
+# This implementation is limited to select.POLLIN and select.POLLOUT and works only for sockets not file descriptors.
+class Poll:
+
+    POLLIN = 1
+    POLLOUT = 4
+
+    def __init__(self) -> None:
+        self.sockets = {}
+
+    def register(self, socket, eventmask) -> None:
+        self.sockets[socket] = eventmask
+
+    def unregister(self, socket) -> None:
+        del self.sockets[socket]
+
+    def modify(self, socket, eventmask) -> None:
+        self.sockets[socket] = eventmask
+
+    def poll(self, timeout=None) -> list:
+        readlist = [socket for socket, eventmask in self.sockets.items() if eventmask & self.POLLIN]
+        writelist = [socket for socket, eventmask in self.sockets.items() if eventmask & self.POLLOUT]
+
+        rlist, wlist, _ = select.select(readlist, writelist, [], timeout/1000)
+
+        events = []
+
+        for socket in rlist:
+            events.append((socket, self.POLLIN))
+        for fd in wlist:
+            events.append((fd, self.POLLOUT))
+
+        return events
+
 
 # eof

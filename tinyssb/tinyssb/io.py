@@ -7,6 +7,10 @@ import os
 import sys
 import _thread
 
+import struct
+
+from .util import Poll
+
 try:
     import pycom
     import machine
@@ -212,20 +216,34 @@ class UDP_MULTICAST(FACE):
     
     def __init__(self, addr):
         super().__init__()
-        # print("  creating face for UDP multicast group")
         self.snd_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.snd_sock.setsockopt(socket.IPPROTO_IP,
+                                 socket.IP_MULTICAST_TTL, 2)
+        self.snd_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
         self.snd_sock.bind(mk_addr('0.0.0.0',0))
         if sys.implementation.name != 'micropython':
             self.snd_sock.setsockopt(socket.IPPROTO_IP,
                                      socket.IP_MULTICAST_TTL, 2)
-            self.snd_sock.setsockopt(socket.SOL_IP,
-                                     socket.IP_MULTICAST_IF,
-                                     bytes(4))
+            if sys.platform == "win32":
+                self.snd_sock.setsockopt(socket.IPPROTO_IP,
+                                        socket.IP_MULTICAST_IF,
+                                        bytes(4))
+                
+            else:
+                self.snd_sock.setsockopt(socket.SOL_IP,
+                                        socket.IP_MULTICAST_IF,
+                                        bytes(4))
             self.snd_addr = self.snd_sock.getsockname()
         
         self.rcv_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.rcv_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.rcv_sock.bind(mk_addr(*addr))
+        if sys.platform == "win32":
+            _ , port = addr
+            self.rcv_sock.bind(('', port))
+        else:
+            self.rcv_sock.bind(mk_addr(*addr))
+
         try:
             #try:
             #    host = socket.gethostbyname(socket.gethostname() + '.local'
@@ -234,6 +252,9 @@ class UDP_MULTICAST(FACE):
                                                      sys.platform=='darwin':
                     self.rcv_sock.setsockopt(0, 12, mreq)
             else:
+                if sys.platform == "win32":
+                    mreq = struct.pack('4sL', socket.inet_aton(addr[0]), socket.INADDR_ANY)
+
                 self.rcv_sock.setsockopt(socket.IPPROTO_IP,
                                          socket.IP_ADD_MEMBERSHIP, mreq)
         except Exception as e:
@@ -429,9 +450,15 @@ class IOLOOP:
         :param faces: the interfaces available (BT, LoRa, UDP, ...)
         :param on_rx: NODE method that handle reception of packages
         """
+
+        # only needed to simulate select.poll() for windows
+        if sys.platform == "win32":
+            select.POLLIN = 1
+            select.POLLOUT = 4
+
         self.faces = faces
         self.on_rx = on_rx
-        self.poll = select.poll()
+        self.poll = Poll() if sys.platform == "win32" else select.poll() # emulate poll for windows with select.select() (Only working for sockets, not for file descriptors)
         for fc in faces:
             try:
                 self.poll.register(fc.rcv_sock, select.POLLIN)

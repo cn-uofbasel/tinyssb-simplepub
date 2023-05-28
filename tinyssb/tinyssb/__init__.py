@@ -14,12 +14,15 @@ import bipf
 from . import packet, keystore, identity, util, repository, io, node
 from .dbg import dbg, GRE
 
+import shutil
+
 def erase_all():
     """
     Delete all data on the file system.
     :return: None
     """
-    os.system("rm -rf data")
+    #os.system("rm -rf data")
+    shutil.rmtree(util.DATA_FOLDER, ignore_errors=True)
 
 def list_identities():
     """
@@ -43,9 +46,12 @@ def generate_id(peer_name):
     ks = keystore.Keystore()
     pk = ks.new(peer_name)
 
-    os.system(f"mkdir -p {pfx}/_blob")
-    os.system(f"mkdir -p {pfx}/_logs")
-    os.system(f"mkdir -p {pfx}/_backed")
+    #os.system(f"mkdir -p {pfx}/_blob")
+    #os.system(f"mkdir -p {pfx}/_logs")
+    #os.system(f"mkdir -p {pfx}/_backed")
+    os.makedirs(f'{pfx}/_blob', exist_ok=True)
+    os.makedirs(f'{pfx}/_logs', exist_ok=True)
+    os.makedirs(f'{pfx}/_backed', exist_ok=True)
     with open(f"{pfx}/_backed/config.json", "w") as f:
         f.write(util.json_pp({'name': peer_name, 'rootFeedID': util.hex(pk)}))
 

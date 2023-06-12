@@ -196,6 +196,18 @@ def varint_decode(buf, pos=0):
             return (val,pos-old)
         shift += 7
         pos += 1
+
+def varint_decode_max(buf, pos, maxPos):
+    val = 0
+    shift = 0
+    old = pos - 1
+    while pos < maxPos:
+        b = buf[pos]
+        val |= (b & 0x7f) << shift
+        if (b & 0x80) == 0:
+            return (val,pos-old)
+        shift += 7
+        pos += 1
     
 def varint_encoding_length(val):
     return 1 if val == 0 else (val.bit_length()+6) // 7

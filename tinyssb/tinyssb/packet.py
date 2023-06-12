@@ -202,6 +202,13 @@ def from_bytes(buf120, fid, seq, prev, verify_signature_fct):
     pkt.typ = buf120[7:8]
     pkt.payload = buf120[8:56]
     pkt.signature = buf120[56:]
+    # if int.from_bytes(pkt.typ) == PKTTYPE_chain20:
+    #     pkt.chain_len, sz = btc_var_int_decode(pkt.payload)
+    #     if pkt.chain_len > 0:
+    #         pkt.chain_firstptr = pkt.payload[-20:]
+    #         if pkt.chain_firstptr == bytes(20):
+    #             pkt.chain_firstptr = None
+
     if verify_signature_fct:  # signature
         if not verify_signature_fct(fid, pkt.signature, pkt.nam + buf120[:56]):
             print("signature verify failed")

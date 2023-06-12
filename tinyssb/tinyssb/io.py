@@ -6,7 +6,7 @@
 import os
 import sys
 import _thread
-
+import zlib
 import struct
 
 from .util import Poll
@@ -221,14 +221,15 @@ class UDP_MULTICAST(FACE):
                                  socket.IP_MULTICAST_TTL, 2)
         self.snd_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
-        self.snd_sock.bind(mk_addr('0.0.0.0',0))
+        self.snd_sock.bind(mk_addr('192.168.178.52',0)) #bind to correct ip
         if sys.implementation.name != 'micropython':
             self.snd_sock.setsockopt(socket.IPPROTO_IP,
                                      socket.IP_MULTICAST_TTL, 2)
             if sys.platform == "win32":
-                self.snd_sock.setsockopt(socket.IPPROTO_IP,
-                                        socket.IP_MULTICAST_IF,
-                                        bytes(4))
+                pass
+                # self.snd_sock.setsockopt(socket.IPPROTO_IP,
+                #                         socket.IP_MULTICAST_IF,
+                #                         bytes(4))
                 
             else:
                 self.snd_sock.setsockopt(socket.SOL_IP,
@@ -253,7 +254,7 @@ class UDP_MULTICAST(FACE):
                     self.rcv_sock.setsockopt(0, 12, mreq)
             else:
                 if sys.platform == "win32":
-                    mreq = struct.pack('4sL', socket.inet_aton(addr[0]), socket.INADDR_ANY)
+                    mreq = struct.pack('4s4s', socket.inet_aton(addr[0]), socket.inet_aton("192.168.178.52")) #4sL, socket.INADDR_ANY
 
                 self.rcv_sock.setsockopt(socket.IPPROTO_IP,
                                          socket.IP_ADD_MEMBERSHIP, mreq)
@@ -276,15 +277,28 @@ class UDP_MULTICAST(FACE):
                 self.snd_addr = src
                 break
 
+    
+    def check_crc(self, buf, crc_buf):
+        crc32 = zlib.crc32(buf)
+        crc_bytes = crc32.to_bytes(4, byteorder='big')
+        return crc_bytes == crc_buf
+
     def recv(self, lim):
         r = self.rcv_sock.recvfrom(lim)
         if r == None: return None
         pkt, src = r
-        if src == self.snd_addr: return None  # discard our own packets
-        n = self.neigh
-        n.when = time.time()
-        n.src = src
-        return (pkt,n)
+        if src == self.snd_addr: 
+            return None  # discard our own packets
+        crc = pkt[-4:]
+        pkt = pkt[:len(pkt)-4]
+        if(self.check_crc(pkt, crc)):
+            n = self.neigh
+            n.when = time.time()
+            n.src = src
+            return (pkt,n)
+        else:
+            print("UDP MC crc mismatch")
+            return None
 
     def __str__(self):
         return "UDPmulticast" + str(self.my_addr)
@@ -297,10 +311,16 @@ class UDP_MULTICAST_NEIGHBOR(NEIGHBOR):
     def __init__(self, face, sock):
         super().__init__(face, sock)
         self.is_broadcast = True
+
+    def append_crc(self, buf):
+        crc32 = zlib.crc32(buf)
+        crc_bytes = crc32.to_bytes(4, byteorder='big')
+        return buf + crc_bytes
     
     def send(self, pkt):
         try:
-            self.sock.sendto(pkt, mk_addr(*(self.face.my_addr)))
+            # add crc
+            self.sock.sendto(self.append_crc(pkt), mk_addr(*(self.face.my_addr)))
         except Exception as e:
             dbg(RED, "mc send error:", e)
         pass
@@ -478,7 +498,7 @@ class IOLOOP:
                     if r[1] & select.POLLIN != 0: # new packet available
                         if r[0] == fc.rcv_sock or \
                           (type(r[0])==int and type(fc.rcv_sock)!=int and r[0] == fc.rcv_sock.fileno()):
-                            pn = fc.recv(250)
+                            pn = fc.recv(279)
                             if pn: self.on_rx(*pn) # (pkt, neigh) see function receive from each FACE
                     if r[1] & select.POLLOUT != 0: # next pkt can be sent
                         if len(fc.outqueue) > 0 and (r[0] == fc.snd_sock or \

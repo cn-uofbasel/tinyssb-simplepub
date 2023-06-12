@@ -51,6 +51,13 @@ class REPO:
         except: pass
         self.open_logs = {}
 
+    def _feed_index(self, fid: bytearray) -> int:
+        for i, f in enumerate(self.listlog()):
+            if f == fid:
+                return i
+        
+        return -1
+
     def _log_fn(self, fid):
         """
         Path to the file for a log entry.
@@ -176,6 +183,32 @@ class REPO:
             # print("get_blob", e)
             pass
         return None
+    
+    def get_blob(self, fid: bytearray, seq: int, bnr: int) -> bytearray | None:
+        log = self.get_log(fid)
+        if not log:
+            return None
+        e = log[seq]
+        if not e:
+            return None
+
+        e.undo_chain(lambda h: self.fetch_blob(h))
+        print("first blob:", e.chain_firstptr)
+        
+        next = e.chain_firstptr
+        i = 0
+        while next is not None and next != bytes(20):
+            content = self.fetch_blob(next)
+            if not content:
+                print("Content null")
+                return
+            if (i == bnr):
+                return content
+            i += 1
+            next = content[-20:]
+        
+        return None
+    
 
     def persist_chain(self, pkt, blobs):
         # first persist the blobs as otherwise we could have stored the
@@ -271,8 +304,11 @@ class LOG:
                                 self.verify_fct)
         if pkt == None: return None
         self._append(pkt)
-        if self.acb != None:
-            self.acb(pkt)
+        if int.from_bytes(pkt.typ) == packet.PKTTYPE_chain20:
+            pkt.undo_chain(lambda h: self.fetch_blob(h))
+        if pkt.content_is_complete():
+            if self.acb != None:
+                self.acb(pkt)
         return pkt
 
     def write_plain_48B(self, buf48, signfct):

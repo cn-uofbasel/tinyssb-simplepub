@@ -20,6 +20,13 @@ b64 = lambda b: base64.b64encode(b).decode()
 
 DATA_FOLDER = './data/'
 
+def byteArrayCmp(a: bytearray, b: bytearray) -> int:
+    for i in range(len(a)):
+        d = (a[i] & 0xFF) - (b[i] & 0xFF)
+        if d != 0:
+            return d
+    return 0
+
 # wrote our own json.dumps ..
 # because micropython's json.dumps() does not know how to pretty print
 def json_pp(d, indent=''):
@@ -87,6 +94,8 @@ class Poll:
             events.append((fd, self.POLLOUT))
 
         return events
+    
+   
 
 
 # eof

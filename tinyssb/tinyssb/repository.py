@@ -151,7 +151,7 @@ class REPO:
             fn = self._log_fn(fid)  # file name
             if not isfile(fn):
                 return None
-            l = LOG(fn, self.vfct)
+            l = LOG(fn, self.vfct, self)
             if l == None:
                 return None
             self.open_logs[fid] = l
@@ -235,13 +235,14 @@ class REPO:
 
 class LOG:
 
-    def __init__(self, fileName, verify_signature_fct):
+    def __init__(self, fileName, verify_signature_fct, repo):
         # self.fn = fn
         self.verify_fct = verify_signature_fct
         self.file = open(fileName, 'rb+')
         # dbg(BLU, f"READ:\n{util.hex(self.file.read())}")
         # for i in range(4):
         #     dbg(BLU, f"\n{i}: {util.hex(self.file.read(120))}")
+        self.repo = repo
         self.file.seek(0)
         hdr = self.file.read(120)
         hdr = hdr[4:]  # first 4B unused
@@ -305,7 +306,7 @@ class LOG:
         if pkt == None: return None
         self._append(pkt)
         if int.from_bytes(pkt.typ) == packet.PKTTYPE_chain20:
-            pkt.undo_chain(lambda h: self.fetch_blob(h))
+            pkt.undo_chain(lambda h: self.repo.fetch_blob(h))
         if pkt.content_is_complete():
             if self.acb != None:
                 self.acb(pkt)

@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import sys
 import time
 
@@ -14,7 +15,7 @@ class Chatapp:
     def __init__ (self,name):
 
         if (name == "reset"):
-            tiny.erase_all()
+            shutil.rmtree(util.DATA_FOLDER, ignore_errors=True)
             return
 
         pfx = util.DATA_FOLDER + name

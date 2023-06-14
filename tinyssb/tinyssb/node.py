@@ -69,8 +69,9 @@ class NODE:  # a node in the tinySSB forwarding fabric
         if log_type == LOGTYPE_remote:
             # If it doesn't exist, allocate space for the remote log
             log = self.repo.get_log(fid)
-            log.set_append_cb(self.callback)
+            
             if log is not None:
+                log.set_append_cb(self.callback)
                 # self.request_latest(log, "Add new log")
                 pass
             else:

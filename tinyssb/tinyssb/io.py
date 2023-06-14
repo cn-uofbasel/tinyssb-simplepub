@@ -221,7 +221,7 @@ class UDP_MULTICAST(FACE):
                                  socket.IP_MULTICAST_TTL, 2)
         self.snd_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
-        self.snd_sock.bind(mk_addr('192.168.178.52',0)) #bind to correct ip
+        self.snd_sock.bind(mk_addr("0.0.0.0",0)) #edit to bind to specific net interface
         if sys.implementation.name != 'micropython':
             self.snd_sock.setsockopt(socket.IPPROTO_IP,
                                      socket.IP_MULTICAST_TTL, 2)
@@ -254,7 +254,7 @@ class UDP_MULTICAST(FACE):
                     self.rcv_sock.setsockopt(0, 12, mreq)
             else:
                 if sys.platform == "win32":
-                    mreq = struct.pack('4s4s', socket.inet_aton(addr[0]), socket.inet_aton("192.168.178.52")) #4sL, socket.INADDR_ANY
+                    mreq = struct.pack('4sl', socket.inet_aton(addr[0]), socket.INADDR_ANY) #4s4s, socket.inet_aton for specific network interface
 
                 self.rcv_sock.setsockopt(socket.IPPROTO_IP,
                                          socket.IP_ADD_MEMBERSHIP, mreq)

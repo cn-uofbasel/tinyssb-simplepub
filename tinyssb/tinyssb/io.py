@@ -480,8 +480,12 @@ class WS(FACE):
         self.peer_addr = addr
         self.on_rx = None
         self.websocket = None
-        _thread.start_new_thread(self.start, tuple())
+        # _thread.start_new_thread(self.start, tuple())
+        # _thread.start_new_thread(self.start_send, tuple())
+
+    def start_send(self):
         asyncio.run(self.send())
+        asyncio.Future()
 
     def start(self):
         dbg(MAG, "Before asyncio.run")
@@ -505,12 +509,14 @@ class WS(FACE):
                     break
                 received = p.get_content().split(b'\x00')[0]
                 dbg(RED, f"\nReceived {received[32:]}\n")
+                self.on_rx(received, None)
             except Exception as e:
                 dbg(RED, f"WS recv error: {e}")
             try:
                 self.on_rx(message, None)
             except TypeError:
                 pass
+
     async def send(self):
         print(f"Send: Sending\n")
         while True:
@@ -520,6 +526,7 @@ class WS(FACE):
                         pkt = self.dequeue()
                         dbg(BLU, f"Dequeueing packet {pkt}")
                         await self.websocket.send(pkt)
+                        dbg(BLU, f"Sent packet {pkt}")
                     except Exception as e:
                         dbg(RED, 'send error', e)
                 time.sleep(1)

@@ -38,9 +38,9 @@ class WebServer:
             repo = repository.REPO(pfx,
                                    lambda feed_id, msg, sig: ks.verify(feed_id, msg, sig))
 
-        # faces = [io.WS("0.0.0.0")]
-        self.send_thread("0.0.0.0")
-        self.node = node.NODE(None, ks, repo, self.pk, None)
+        faces = [io.WS("0.0.0.0")]
+        self.send_thread(faces[0])
+        self.node = node.NODE(faces, ks, repo, self.pk, None)
 
         print("id:", f'@{base64.b64encode(self.pk).decode()}.ed25519')
 
@@ -48,8 +48,9 @@ class WebServer:
         while True:
             time.sleep(10)
 
-    def send_thread(self, addr):
-        _thread.start_new_thread(io.WS(addr))
+    def send_thread(self, f):
+        _thread.start_new_thread(f.start_send, tuple())
+        _thread.start_new_thread(f.start, tuple())
 
 if __name__ == '__main__':
     WebServer()

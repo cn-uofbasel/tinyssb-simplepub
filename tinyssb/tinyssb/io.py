@@ -8,8 +8,14 @@ import sys
 import _thread
 import zlib
 import struct
+import asyncio
+from websockets.server import serve
+from . import keystore
+from . import packet
 
 from .util import Poll
+
+WEB_SOCKET_PORT = 8080
 
 try:
     import pycom
@@ -58,6 +64,7 @@ class FACE:
         self.earliest_send = None
 
     def enqueue(self, pktbits):
+        dbg(YEL, f"Enqueued: {pktbits[:5]}")
         global queue_lock
         queue_lock.acquire()
         if not pktbits in self.outqueue:
@@ -68,6 +75,7 @@ class FACE:
         global queue_lock
         queue_lock.acquire()
         pkt = self.outqueue[0]
+        dbg(BLU, f"Dequeued: {pkt[:5]}")
         del self.outqueue[0]
         queue_lock.release()
         return pkt
@@ -178,7 +186,7 @@ class LORA(FACE):
         self.neighbors = { 1: self.neigh }
 
     def recv(self, lim):
-        print("    lora rcv", 
+        print("    lora rcv",
               self._lora.stats().rssi,
               self._lora.stats().snr)
         return (self.rcv_sock.recvfrom(lim)[0], self.neigh)
@@ -197,7 +205,7 @@ class LORA_NEIGHBOR(NEIGHBOR):
     def __init__(self, face, sock):
         super().__init__(face, sock)
         self.is_broadcast = True
-    
+
     def send(self, pkt):
         try:    self.sock.send(pkt) # can throw EAGAIN if sent too fast
         except: pass
@@ -213,7 +221,7 @@ class LORA_NEIGHBOR(NEIGHBOR):
 # ----------------------------------------------------------------------
 
 class UDP_MULTICAST(FACE):
-    
+
     def __init__(self, addr):
         super().__init__()
         self.snd_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -230,13 +238,13 @@ class UDP_MULTICAST(FACE):
                 # self.snd_sock.setsockopt(socket.IPPROTO_IP,
                 #                         socket.IP_MULTICAST_IF,
                 #                         bytes(4))
-                
+
             else:
                 self.snd_sock.setsockopt(socket.SOL_IP,
                                         socket.IP_MULTICAST_IF,
                                         bytes(4))
             self.snd_addr = self.snd_sock.getsockname()
-        
+
         self.rcv_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.rcv_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         if sys.platform == "win32":
@@ -277,7 +285,7 @@ class UDP_MULTICAST(FACE):
                 self.snd_addr = src
                 break
 
-    
+
     def check_crc(self, buf, crc_buf):
         crc32 = zlib.crc32(buf)
         crc_bytes = crc32.to_bytes(4, byteorder='big')
@@ -287,7 +295,7 @@ class UDP_MULTICAST(FACE):
         r = self.rcv_sock.recvfrom(lim)
         if r == None: return None
         pkt, src = r
-        if src == self.snd_addr: 
+        if src == self.snd_addr:
             return None  # discard our own packets
         crc = pkt[-4:]
         pkt = pkt[:len(pkt)-4]
@@ -316,7 +324,7 @@ class UDP_MULTICAST_NEIGHBOR(NEIGHBOR):
         crc32 = zlib.crc32(buf)
         crc_bytes = crc32.to_bytes(4, byteorder='big')
         return buf + crc_bytes
-    
+
     def send(self, pkt):
         try:
             # add crc
@@ -399,7 +407,7 @@ class KISS_NEIGHBOR(NEIGHBOR):
     def __init__(self, face, sock):
         super().__init__(face, sock)
         self.is_broadcast = True
-    
+
     def send(self, pkt):
         # print("KISS send", len(pkt))
         try:
@@ -417,7 +425,7 @@ class KISS_NEIGHBOR(NEIGHBOR):
 # ----------------------------------------------------------------------
 
 class UDP_UNICAST(FACE):
-    
+
     def __init__(self, addr):
         super().__init__()
         print("  creating face for UDP unicast")
@@ -450,7 +458,7 @@ class UDP_UNICAST_NEIGHBOR(NEIGHBOR):
     def __init__(self, face, sock):
         super().__init__(face, sock)
         # self.is_broadcast = True
-    
+
     def send(self, pkt):
         try:
             self.sock.sendto(pkt, mk_addr(*(self.face.peer_addr)))
@@ -459,6 +467,66 @@ class UDP_UNICAST_NEIGHBOR(NEIGHBOR):
         pass
 
     pass
+
+# ----------------------------------------------------------------------
+
+class WS(FACE):
+
+    def __init__(self, addr):
+        super().__init__()
+        print("  creating face for Web socket")
+        self.rcv_sock = socket.socket()
+        self.snd_sock = socket.socket()
+        self.peer_addr = addr
+        self.on_rx = None
+        self.websocket = None
+        _thread.start_new_thread(self.start, tuple())
+        _thread.start_new_thread(self.send, tuple())
+
+    def start(self):
+        dbg(MAG, "Before asyncio.run")
+        asyncio.run(self.main(self.peer_addr))
+        dbg(MAG, "Past asyncio.run")
+
+    async def main(self, addr):
+        async with serve(self.recv, addr, WEB_SOCKET_PORT):
+            await asyncio.Future()  # run forever
+
+    async def recv(self, websocket):
+        async for message in websocket:
+            self.websocket = websocket
+
+            fid = bytes(message[8:40])
+            try:
+                pkt = packet.PACKET(fid, 1, fid[:20])
+                p = packet.from_bytes(message, fid, 1, fid[:20],
+                                      lambda f, mssg, sig: keystore.Keystore().verify(f, mssg, sig))
+                if p is None:
+                    break
+                received = p.get_content().split(b'\x00')[0]
+                dbg(RED, f"\nReceived {received[32:]}\n")
+            except Exception as e:
+                dbg(RED, f"WS recv error: {e}")
+            self.on_rx(message, None)
+
+    async def send(self):
+        print(f"Send: Sending\n")
+        while True:
+            try:
+                if len(self.outqueue) > 0 and self.websocket is not None:
+                    pkt = self.dequeue()
+                    dbg(BLU, f"Dequeueing packet {pkt}")
+                    await self.websocket.send(pkt)
+                    try:
+                        self.on_rx(pkt, None)
+                    except Exception as e:
+                        dbg(RED, 'send error', e)
+                time.sleep(1)
+            except Exception as e:
+                dbg(RED, "WS send error:", e)
+
+    def __str__(self):
+        return "WEBSOCKET" + str(self.peer_addr)
 
 # ----------------------------------------------------------------------
 
@@ -488,6 +556,7 @@ class IOLOOP:
                 print('poll registration error', fc, e)
                 pass
 
+    """
     def run(self):
         sleep_time = 100
         while True:
@@ -532,8 +601,6 @@ class IOLOOP:
                         self.poll.modify(fc.snd_sock, select.POLLIN)
                     else:
                         self.poll.modify(fc.snd_sock, 0)
-
-    pass
-
+            """
 
 # eof

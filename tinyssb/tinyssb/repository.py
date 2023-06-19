@@ -305,7 +305,7 @@ class LOG:
                                 self.verify_fct)
         if pkt == None: return None
         self._append(pkt)
-        if int.from_bytes(pkt.typ) == packet.PKTTYPE_chain20:
+        if int.from_bytes(pkt.typ, 'big') == packet.PKTTYPE_chain20:
             pkt.undo_chain(lambda h: self.repo.fetch_blob(h))
         if pkt.content_is_complete():
             if self.acb != None:

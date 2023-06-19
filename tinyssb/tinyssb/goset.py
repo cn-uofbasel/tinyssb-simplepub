@@ -214,7 +214,7 @@ class GOset():
         cl.hi = self.keys[hi]
         cl.xo = self._xor(lo, hi)
         cl.sz = hi - lo + 1
-        b = cl.sz.to_bytes() # TODO maybe problems with unsigned integer
+        b = bytes(cl.sz) # TODO maybe problems with unsigned integer
         cl.wire = cl.typ + cl.lo + cl.hi + cl.xo + b
         return cl
 

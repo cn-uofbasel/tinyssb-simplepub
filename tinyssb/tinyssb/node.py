@@ -90,7 +90,8 @@ class NODE:  # a node in the tinySSB forwarding fabric
             # dbg(YEL, f"Deactivate log: there is no log with id = {hex_fid}")
 
     def start(self):
-        self.ioloop = io.IOLOOP(self.faces, self.on_rx)
+        self.faces[0].on_rx = self.on_rx
+        # self.ioloop = io.IOLOOP(self.faces, self.on_rx)
         # dbg(TERM_NORM, '  starting thread with IO loop')
 
         print(self.me.hex())
@@ -121,7 +122,7 @@ class NODE:  # a node in the tinySSB forwarding fabric
                     self.arm_blob(hptr, lambda buf: self.incoming_chainedblob(buf,fid,seq,blbt_ndx + 1))
             print("loaded pending:", self.pending_chains)
 
-        _thread.start_new_thread(self.ioloop.run, tuple())
+        # _thread.start_new_thread(self.ioloop.run, tuple())
         # dbg(TERM_NORM, "  starting thread with arq loop")
         _thread.start_new_thread(self.goset.loop, tuple())
         _thread.start_new_thread(self.arq_loop, tuple())
@@ -182,6 +183,10 @@ class NODE:  # a node in the tinySSB forwarding fabric
             if hptr in self.blbt:
                 self.blbt[hptr](buf)
             else:
+                fid = bytes(buf[8:40])
+                p = packet.from_bytes(buf, fid, 1, fid[:20],
+                                      lambda f, mssg, sig: self.ks.verify(f, mssg, sig))
+                dbg(GRE, f"received {p.payload}!!!!\n\n")
                 print("No handler found for dmx:", dmx.hex())
 
     def push(self, pkt_lst, forced=True):
@@ -576,7 +581,7 @@ class NODE:  # a node in the tinySSB forwarding fabric
                 vect.append(bptr)
 
                 dmx = packet._dmx(key + bptr.to_bytes(4, 'big') + feed.frontM)
-                print("arm", dmx.hex(), f"for {key.hex()}.{bptr}")
+                # print("arm", dmx.hex(), f"for {key.hex()}.{bptr}")
                 self.arm_dmx(dmx, lambda buf, n: self.incoming_logentry(dmx,
                                                             feed, buf, n))
                 v += ("[ " if len(v) == 0 else ", ") + f'{ndx}.{bptr}'
@@ -590,7 +595,7 @@ class NODE:  # a node in the tinySSB forwarding fabric
                 wire = self.want_dmx + bipf.dumps(vect)
                 for f in self.faces:
                     f.enqueue(wire)
-            print(">> sent WANT request", v, "]")
+            # print(">> sent WANT request", v, "]")
 
             chunk_req_list = []
             for c in self.pending_chains:
@@ -603,7 +608,11 @@ class NODE:  # a node in the tinySSB forwarding fabric
                 for f in self.faces:
                     f.enqueue(wire)
                     print(">> sent CHK request:", chunk_req_list)
-            time.sleep(5)
+            # data = b'Trying to reach back'
+            # data += bytes(48 - len(data))
+            # print(f"Sending try: {data}")
+            # self.write_plain_48B(self.me, data)
+            time.sleep(5)  # TODO: back to 5
 
 
         

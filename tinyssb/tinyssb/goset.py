@@ -115,9 +115,9 @@ class GOset():
         retain = []
         for c in self.pending_claims:
             if(c.sz == 0):
-                return
-            lo = next(i for i, x in enumerate(self.keys) if util.byteArrayCmp(x, c.lo) == 0)
-            hi = next(i for i, x in enumerate(self.keys) if util.byteArrayCmp(x, c.hi) == 0)
+                continue
+            lo = next((i for i, x in enumerate(self.keys) if util.byteArrayCmp(x, c.lo) == 0), -1)
+            hi = next((i for i, x in enumerate(self.keys) if util.byteArrayCmp(x, c.hi) == 0), -1)
             if lo == -1 or hi == -1 or lo > hi:
                 continue
             partial = self.mkClaim(lo,hi)
@@ -203,7 +203,7 @@ class GOset():
         cl.lo = pkt[1:33]
         cl.hi = pkt[33:65]
         cl.xo = pkt[65:97]
-        cl.sz = pkt[97] # TODO maybe problems with unsigned integer
+        cl.sz = pkt[97]
         cl.wire = pkt
         return cl
     
@@ -214,7 +214,8 @@ class GOset():
         cl.hi = self.keys[hi]
         cl.xo = self._xor(lo, hi)
         cl.sz = hi - lo + 1
-        b = bytes(cl.sz) # TODO maybe problems with unsigned integer
+        b = cl.sz.to_bytes(1, "big")
+        print("make claim byte")
         cl.wire = cl.typ + cl.lo + cl.hi + cl.xo + b
         return cl
 

@@ -364,14 +364,14 @@ class NODE:  # a node in the tinySSB forwarding fabric
                 
             pkt = self.repo.get_log(fid)[seq]
             
-            if pkt is None or int.from_bytes(pkt.typ) != repository.packet.PKTTYPE_chain20:
+            if pkt is None or pkt.typ[0] != repository.packet.PKTTYPE_chain20:
                 if pkt is None:
                     print("could not find packet")
                 continue
             (sz, szlen) = bipf.varint_decode_max(pkt.wire, DMX_LEN + 1, DMX_LEN + 4)
             if(sz <= 28 - szlen):
                 continue
-            maxChunks = (sz - (28 - szlen) + 99) / 100
+            maxChunks = (sz - (28 - szlen) + 99) // 100
             if cnr > maxChunks:
                 continue
             while(cnr <= maxChunks and credit > 0):

@@ -184,13 +184,16 @@ class REPO:
             pass
         return None
     
-    def get_blob(self, fid: bytearray, seq: int, bnr: int) -> bytearray | None:
+    def get_blob(self, fid: bytearray, seq: int, bnr: int):
+        print("get blob for", fid, seq, bnr)
         log = self.get_log(fid)
         if not log:
             return None
+        print("feed found")
         e = log[seq]
         if not e:
             return None
+        print("packet found")
 
         e.undo_chain(lambda h: self.fetch_blob(h))
         print("first blob:", e.chain_firstptr)

@@ -46,7 +46,10 @@ class WebServer:
 
         self.node.start()
         while True:
-            time.sleep(10)
+            # d = b'Trying to reach you'
+            # d += b'\x00' * (48 - len(d))
+            # self.node.write_plain_48B(self.node.me, d)
+            time.sleep(3)
 
     def send_thread(self, f):
         _thread.start_new_thread(f.start_send, tuple())

@@ -169,8 +169,6 @@ class NODE:  # a node in the tinySSB forwarding fabric
         # if len(buf) == 120:
             # try: dbg(RED, "<< is", bipf.loads(buf[8:56]))#, "...", buf[:7] in self.dmxt)
             # except: pass
-        
-        
 
         dmx = buf[:7] # DMX_LEN = 7
 
@@ -183,10 +181,10 @@ class NODE:  # a node in the tinySSB forwarding fabric
             if hptr in self.blbt:
                 self.blbt[hptr](buf)
             else:
-                fid = bytes(buf[8:40])
-                p = packet.from_bytes(buf, fid, 1, fid[:20],
-                                      lambda f, mssg, sig: self.ks.verify(f, mssg, sig))
-                dbg(GRE, f"received {p.payload}!!!!\n\n")
+                # fid = bytes(buf[8:40])
+                # p = packet.from_bytes(buf, fid, 1, fid[:20],
+                #                       lambda f, mssg, sig: self.ks.verify(f, mssg, sig))
+                # dbg(GRE, f"received {p.payload}!!!!\n\n")
                 print("No handler found for dmx:", dmx.hex())
 
     def push(self, pkt_lst, forced=True):
@@ -581,7 +579,7 @@ class NODE:  # a node in the tinySSB forwarding fabric
                 vect.append(bptr)
 
                 dmx = packet._dmx(key + bptr.to_bytes(4, 'big') + feed.frontM)
-                # print("arm", dmx.hex(), f"for {key.hex()}.{bptr}")
+                print("arm", dmx.hex(), f"for {key.hex()}.{bptr}")
                 self.arm_dmx(dmx, lambda buf, n: self.incoming_logentry(dmx,
                                                             feed, buf, n))
                 v += ("[ " if len(v) == 0 else ", ") + f'{ndx}.{bptr}'
@@ -595,7 +593,7 @@ class NODE:  # a node in the tinySSB forwarding fabric
                 wire = self.want_dmx + bipf.dumps(vect)
                 for f in self.faces:
                     f.enqueue(wire)
-            # print(">> sent WANT request", v, "]")
+            print(">> sent WANT request", v, "]")
 
             chunk_req_list = []
             for c in self.pending_chains:

@@ -475,13 +475,9 @@ class WS(FACE):
     def __init__(self, addr):
         super().__init__()
         print("  creating face for Web socket")
-        self.rcv_sock = socket.socket()
-        self.snd_sock = socket.socket()
         self.peer_addr = addr
         self.on_rx = None
         self.websocket = None
-        # _thread.start_new_thread(self.start, tuple())
-        # _thread.start_new_thread(self.start_send, tuple())
 
     def start_send(self):
         asyncio.run(self.send())
@@ -490,7 +486,6 @@ class WS(FACE):
     def start(self):
         dbg(MAG, "Before asyncio.run")
         asyncio.run(self.main(self.peer_addr))
-        dbg(MAG, "Past asyncio.run")
 
     async def main(self, addr):
         async with serve(self.recv, addr, WEB_SOCKET_PORT):
@@ -499,39 +494,24 @@ class WS(FACE):
     async def recv(self, websocket):
         async for message in websocket:
             self.websocket = websocket
-
-            fid = bytes(message[8:40])
-            try:
-                pkt = packet.PACKET(fid, 1, fid[:20])
-                p = packet.from_bytes(message, fid, 1, fid[:20],
-                                      lambda f, mssg, sig: keystore.Keystore().verify(f, mssg, sig))
-                if p is None:
-                    break
-                received = p.get_content().split(b'\x00')[0]
-                dbg(RED, f"\nReceived {received[32:]}\n")
-                self.on_rx(received, None)
-            except Exception as e:
-                dbg(RED, f"WS recv error: {e}")
             try:
                 self.on_rx(message, None)
             except TypeError:
                 pass
+            except Exception as e:
+                dbg(RED, f"WS recv error: {e}")
 
     async def send(self):
         print(f"Send: Sending\n")
         while True:
-            try:
-                if len(self.outqueue) > 0 and self.websocket is not None:
-                    try:
-                        pkt = self.dequeue()
-                        dbg(BLU, f"Dequeueing packet {pkt}")
-                        await self.websocket.send(pkt)
-                        dbg(BLU, f"Sent packet {pkt}")
-                    except Exception as e:
-                        dbg(RED, 'send error', e)
-                time.sleep(1)
-            except Exception as e:
-                dbg(RED, "WS send error:", e)
+            if len(self.outqueue) > 0 and self.websocket is not None:
+                try:
+                    pkt = self.dequeue()
+                    await self.websocket.send(pkt)
+                    dbg(BLU, f"Sent packet {pkt[:5]}")
+                except Exception as e:
+                    dbg(RED, 'send error', e)
+            time.sleep(1)
 
     def __str__(self):
         return "WEBSOCKET" + str(self.peer_addr)

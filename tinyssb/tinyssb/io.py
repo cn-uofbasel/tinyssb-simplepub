@@ -9,6 +9,7 @@ import _thread
 import zlib
 import struct
 import asyncio
+import websockets
 from websockets.server import serve
 from . import keystore
 from . import packet
@@ -477,7 +478,7 @@ class WS(FACE):
         print("  creating face for Web socket")
         self.peer_addr = addr
         self.on_rx = None
-        self.websocket = None
+        self.websocket = []
 
     def start_send(self):
         asyncio.run(self.send())
@@ -492,26 +493,37 @@ class WS(FACE):
             await asyncio.Future()  # run forever
 
     async def recv(self, websocket):
-        async for message in websocket:
-            self.websocket = websocket
-            try:
-                self.on_rx(message, None)
-            except TypeError:
-                pass
-            except Exception as e:
-                dbg(RED, f"WS recv error: {e}")
+        try:
+            async for message in websocket:
+                self.websocket.append(websocket)
+                try:
+                    self.on_rx(message, None)
+                except TypeError:
+                    pass
+        except websockets.exceptions.ConnectionClosed as e:
+            dbg(BLU, f"Connection was closed")
+        except Exception as e:
+            dbg(RED, f"WS recv error: {e}\nConnection closed")
 
     async def send(self):
         print(f"Send: Sending\n")
         while True:
-            if len(self.outqueue) > 0 and self.websocket is not None:
-                try:
-                    pkt = self.dequeue()
-                    await self.websocket.send(pkt)
-                    dbg(BLU, f"Sent packet {pkt[:5]}")
-                except Exception as e:
-                    dbg(RED, 'send error', e)
-            time.sleep(1)
+            if len(self.outqueue) > 0 and len(self.websocket) != 0:
+                ws = None
+                pkt = self.dequeue()
+                for w in self.websocket:
+                    try:
+                        ws = w
+                        await w.send(pkt)
+                    except Exception as e:
+                        dbg(RED, 'send error', e)
+                        try:
+                            self.websocket.remove(ws)
+                        except Exception:
+                            pass
+                # dbg(BLU, f"Sent packet {pkt[:5]}")
+
+            time.sleep(0.01)
 
     def __str__(self):
         return "WEBSOCKET" + str(self.peer_addr)

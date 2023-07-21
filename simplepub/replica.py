@@ -167,6 +167,19 @@ class Replica:
         except:
             return None
 
+    def get_content_len(self, seq):
+        pkt = self.get_entry_pkt(seq)
+        if pkt == None:
+            return None
+        if pkt[7] == PKTTYPE_plain48:
+            return (48,48)
+        elif pkt[7] == PKTTYPE_chain20:
+            content_len, sz = bipf.varint_decode(pkt, 8)
+            if not seq in self.state['pend_sc']:
+                return (content_len, content_len)
+            available = (48-20-sz) + 100 * self.state['pend_sc'][seq][0]
+            return (available, content_len)
+
     def get_chunk_pkt(self, seq, cnr):
         try:
             assert seq >= 1 and seq <= self.state['max_seq']
@@ -178,9 +191,12 @@ class Replica:
                 cnt = self.state['max_seq'] - seq + 1
                 while cnt > 0:
                     f.seek(pos-4, os.SEEK_SET)
+                    lim = pos
                     pos = int.from_bytes(f.read(4), byteorder='big')
                     cnt -= 1
                 pos += 120*(cnr+1)
+                if pos > lim-120:
+                    return None
                 f.seek(pos, os.SEEK_SET)
                 return f.read(120)
         except:

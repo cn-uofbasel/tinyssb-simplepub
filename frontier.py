@@ -21,7 +21,7 @@ def bytes2content(buf):
         return '||'
     try:
         buf = bipf.loads(buf)
-        return f"bipf: {bytes2hex(buf)}"
+        return f"bipf({bytes2hex(buf)})"
     except:
         return buf.decode(error='replace')
     
@@ -35,7 +35,9 @@ if __name__ == '__main__':
     ap = argparse.ArgumentParser()
     ap.add_argument('-d', type=str, default='./data', metavar='DATAPATH',
                     help='path to persistency directory')
-    ap.add_argument('-s', action="store_true", default=False,
+    ap.add_argument('-raw', action='store_true', default=False,
+                    help='dump raw log entries and side chain packets')
+    ap.add_argument('-stat', action="store_true", default=False,
                     help='only show stats (no content), default: False')
     args = ap.parse_args()
 
@@ -51,10 +53,12 @@ if __name__ == '__main__':
     for i in range(len(keys)):
         fid = keys[i];
         r = replica.Replica(args.d,fid,None)
-        if not args.s: print(f"* key {i}  {fid.hex()}")
+        if not args.stat:
+            print(f"* key {i}  {fid.hex()}")
         ms = r.state['max_seq']
         cnt_entries += ms
-        if not args.s: print(f"  max_seq = {ms}, prev = {r.state['prev'].hex()}")
+        if not args.stat:
+            print(f"  max_seq = {ms}, prev = {r.state['prev'].hex()}")
         psc = r.state['pend_sc']
         for k in range(ms):
             e = r.get_entry_pkt(k+1)
@@ -69,13 +73,19 @@ if __name__ == '__main__':
                 cnt_chunks += v[0]
                 cnt_missing += v[1]
             psc = {s:f"{v[0]}/{v[0]+v[1]}" for s,v in psc.items()}
-            if not args.s: print(f"  pend_sc = {psc}")
-        if ms > 0:
-            if not args.s: print("  content:")
+            if not args.stat:
+                print(f"  pend_sc = {psc}")
+        if ms > 0 and not args.stat:
             for k in range(ms):
-                if not args.s: print(f"  .{k+1} " + bytes2content(r.read(k+1)))
+                a,l = r.get_content_len(k+1)
+                print(f"  #{k+1}      "[:10] + f"           {a}/{l} "[-13:], end='')
+                if args.raw:
+                    print(r.read(k+1).hex())
+                else:
+                    print(bytes2content(r.read(k+1)))
 
-    if not args.s: print()
+    if not args.stat:
+        print()
     print("Stats:")
     print(f"- {len(keys)} feeds")
     print(f"- {cnt_entries} available entries")

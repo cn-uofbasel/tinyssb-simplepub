@@ -88,7 +88,8 @@ class PubNode:
             enc_len += bipf.encodingLength(seq)
             if enc_len > 100:
                 break
-        self.log_offs = (self.log_offs + 1) % len(self.goset.keys)
+        if len(self.goset.keys) > 0:
+            self.log_offs = (self.log_offs + 1) % len(self.goset.keys)
         if lst != []:
             lst = [self.want_dmx + bipf.dumps(lst)]
         return lst, self.rtt

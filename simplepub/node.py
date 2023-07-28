@@ -25,7 +25,7 @@ class PubNode:
         self.role = role
         self.verbose = verbose
         self.vf = lambda pk,sig,msg: pure25519.open(sig+msg,pk)
-        self.reps  = { fid: replica.Replica(datapath,fid,vf) for fid in [
+        self.reps  = { fid: replica.Replica(datapath,fid,self.vf) for fid in [
                     bytes.fromhex(fn) for fn in os.listdir(datapath)
                     if len(fn) == 64 and os.path.isdir(datapath + '/' + fn)] }
         self.chkt  = {}    # chunk filter bank

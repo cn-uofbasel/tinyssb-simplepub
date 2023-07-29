@@ -1,7 +1,7 @@
 # tinySSB Simple Pub
 
 The three programs of this repo are:
-- [spub.py](#spubpy---a-pure-peer-pub-can-be-both-initiator-and-responder) the websocket server
+- [spub.py](#spubpy---a-pure-peer-pub-can-be-both-initiator-and-responder) the websocket and BlueTooth Low Energy server
 - [start.sh](#startsh---a-bash-script-for-launching-the-websocket-server) a simple Bash script for launching the server on port 8080
 - [frontier.py](#frontierpy---displays-the-content-of-the-persistence-directory-including-un-bipf-ing-where-possible) displays the server's content
 
@@ -12,7 +12,8 @@ external dependencies).
 ## Description
 
 The "tinySSB simple pub" offers an Internet-based storage area for tinySSB append-only logs:
-- accessible via web sockets
+- accessible via web sockets, and
+- accessible via BLE (central-only)
 - running the tinySSB synchronization protocol
   -  datagram-based, packets have 120 Bytes or less
   -  growOnlySet protocol for compressing feed IDs
@@ -94,5 +95,13 @@ Stats:
 
 % ./start.sh
 ```
+
+
+## Notes
+
+Because of our "no external dependencies" approach we include the
+Bleak library from July 2023 (release v0.20.2) as is. See
+[https://github.com/hbldh/bleak](https://github.com/hbldh/bleak) for
+the latest version.
 
 ----

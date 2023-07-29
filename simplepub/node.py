@@ -90,6 +90,9 @@ class PubNode:
                 break
         if len(self.goset.keys) > 0:
             self.log_offs = (self.log_offs + 1) % len(self.goset.keys)
+        s = [(lst[0] + x)%len(self.goset.keys) for x in range(len(lst)-1)]
+        s = ' '.join([ f"{s[i]}.{lst[1+i]}" for i in range(len(s))])
+        print(f"   new w=[ {s} ]")
         if lst != []:
             lst = [self.want_dmx + bipf.dumps(lst)]
         return lst, self.rtt
@@ -111,6 +114,7 @@ class PubNode:
                     break
             if enc_len > 100:
                 break
+        print(f"   new c=[ {' '.join(['.'.join([str(y) for y in x]) for x in lst])} ]")
         if lst != []:
             lst = [self.chnk_dmx + bipf.dumps(lst)]
         return lst, self.rtt
@@ -126,6 +130,8 @@ class PubNode:
             # if not dmx in [self.want_dmx,self.chnk_dmx,self.goset.goset_dmx]:
             #     print("  ", dmx.hex(), self.dmxt[dmx])
             lst += self.dmxt[dmx][0](dmx, pkt)
+        # else:
+        #     print("not in dmxt", [x.hex() for x in self.dmxt.keys()])
         hptr = hashlib.sha256(pkt).digest()[:20] # HASH_LEN = 20
         if hptr in self.chkt:
             plst = [x for x in self.chkt[hptr].items()]

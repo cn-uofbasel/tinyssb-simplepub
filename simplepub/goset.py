@@ -81,7 +81,7 @@ class GOset():
         
         if len(buf) != CLAIM_LEN or buf[0] != ord('c'):
             if self.verbose:
-                print("   =G unknown msg {buf[:1]}")
+                print(f"   =G unknown msg {buf[:1]}")
             return []
         
         cl = self.mkClaim_from_bytes(buf)

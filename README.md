@@ -1,5 +1,14 @@
 # tinySSB Simple Pub
 
+Three programs are desrcibed in this document:
+- [spub.py](#spubpy---a-pure-peer-pub-can-be-both-initiator-and-responder) the websocket server
+- [start.sh](#start.sh---a-bash-script-for-launching-the-websocket-server)
+) a simple Bash script for launching the server on port 8080
+- [frontier.py](#frontierpy---displays-the-content-of-the-persistence-directory-including-un-bipf-ing-where-possible) displays the server's content
+
+
+##d Description
+
 The "tinySSB simple pub" offers an Internet-based storage area for tinySSB append-only logs:
 - accessible via web sockets
 - running the tinySSB synchronization protocol
@@ -73,6 +82,15 @@ Stats:
 - 147 available entries
 - 261 available chunks
 - 36 missing chunks: 1.6.32ff, 1.7.0ff
+```
+
+### ```start.sh``` - a Bash script for launching the websocket server
+
+```
+# launches the websocket server on port 8080 in a loop
+# (restarting the server after 10 sec if it crashes)
+
+% ./start.sh
 ```
 
 ----

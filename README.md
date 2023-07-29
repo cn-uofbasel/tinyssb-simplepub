@@ -1,19 +1,22 @@
 # tinySSB Simple Pub
 
-Three programs are desrcibed in this document:
+The three programs of this repo are:
 - [spub.py](#spubpy---a-pure-peer-pub-can-be-both-initiator-and-responder) the websocket server
 - [start.sh](#startsh---a-bash-script-for-launching-the-websocket-server) a simple Bash script for launching the server on port 8080
 - [frontier.py](#frontierpy---displays-the-content-of-the-persistence-directory-including-un-bipf-ing-where-possible) displays the server's content
 
+See the ```simplepub``` directory for the self-contained library (no
+external dependencies).
 
-##d Description
+
+## Description
 
 The "tinySSB simple pub" offers an Internet-based storage area for tinySSB append-only logs:
 - accessible via web sockets
 - running the tinySSB synchronization protocol
   -  datagram-based, packets have 120 Bytes or less
   -  growOnlySet protocol for compressing feed IDs
-  -  vectors with WANT and CHNK (request) information
+  -  vectors with WANT and CHNK information
 - adaptive timers, made for reliable connections
 - crash resistant: the ```frontier.bin``` file for a log is updated on startup, should the log have been extended but the frontier failed to be updated
 
@@ -24,16 +27,16 @@ The simple pub lacks:
 - per end-device grow-only set (only one global table of feed IDs)
 - resilience (DHT-like self-reconfiguration)
 
-The software has been heavily rewritten
-- new experimental file system layout: only two files per log
+Compared to previous TinySSB relays, the software has been heavily rewritten:
+- new experimental file system layout: only two files per feed (2FPF)
   - the ```log.bin``` file contains for each entry its full length sidechain even if not all chunks have been received yet
   - the ```frontier.bin``` file stores essential properties, including a list of unfinished sidechains
-  - by persisting sidechain status we avoid a rescan of the file system
-- no main loop anymore for handling all IO. Instead we adopt the asyncio model of the ```websockets``` package and have three different tasks:
+  - by persisting the sidechain status in ```frontier.bin``` we avoid a rescan of the file system at startup
+- no main loop anymore for handling IO: Instead we adopt the asyncio model of the ```websockets``` package and have three different tasks:
   - goset
   - WANT vector
   - CHNK vector
-- no dependency on other tinySSB packages: BIPF and pure25519 is included
+- no dependency on other tinySSB packages: BIPF and pure25519 are included
 
 ## Programs
 

@@ -173,12 +173,13 @@ class Replica:
             return None
         if pkt[7] == PKTTYPE_plain48:
             return (48,48)
-        elif pkt[7] == PKTTYPE_chain20:
+        if pkt[7] == PKTTYPE_chain20:
             content_len, sz = bipf.varint_decode(pkt, 8)
             if not seq in self.state['pend_sc']:
                 return (content_len, content_len)
             available = (48-20-sz) + 100 * self.state['pend_sc'][seq][0]
             return (available, content_len)
+        return None
 
     def get_chunk_pkt(self, seq, cnr):
         try:

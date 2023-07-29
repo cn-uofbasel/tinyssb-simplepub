@@ -2,8 +2,7 @@
 
 Three programs are desrcibed in this document:
 - [spub.py](#spubpy---a-pure-peer-pub-can-be-both-initiator-and-responder) the websocket server
-- [start.sh](#start.sh---a-bash-script-for-launching-the-websocket-server)
-) a simple Bash script for launching the server on port 8080
+- [start.sh](#startsh---a-bash-script-for-launching-the-websocket-server) a simple Bash script for launching the server on port 8080
 - [frontier.py](#frontierpy---displays-the-content-of-the-persistence-directory-including-un-bipf-ing-where-possible) displays the server's content
 
 

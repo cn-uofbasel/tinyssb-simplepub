@@ -51,7 +51,8 @@ positional arguments:
 
 options:
   -h, --help            show this help message and exit
-  -d DATAPATH           path to persistency directory
+  -ble                  enable Bluetooth Low Energ (default: off)
+  -data DATAPATH        path to persistency directory (default: ./data)
   -role {in,inout,out}  direction of data flow (default: in)
   -v                    print i/o timestamps
 ```

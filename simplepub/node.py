@@ -24,8 +24,8 @@ class PubNode:
         self.datapath = datapath
         self.role = role
         self.verbose = verbose
-        vf = lambda pk,sig,msg: pure25519.open(sig+msg,pk)
-        self.reps  = { fid: replica.Replica(datapath,fid,vf) for fid in [
+        self.vf = lambda pk,sig,msg: pure25519.open(sig+msg,pk)
+        self.reps  = { fid: replica.Replica(datapath,fid,self.vf) for fid in [
                     bytes.fromhex(fn) for fn in os.listdir(datapath)
                     if len(fn) == 64 and os.path.isdir(datapath + '/' + fn)] }
         self.chkt  = {}    # chunk filter bank
@@ -88,7 +88,8 @@ class PubNode:
             enc_len += bipf.encodingLength(seq)
             if enc_len > 100:
                 break
-        self.log_offs = (self.log_offs + 1) % len(self.goset.keys)
+        if len(self.goset.keys) > 0:
+            self.log_offs = (self.log_offs + 1) % len(self.goset.keys)
         if lst != []:
             lst = [self.want_dmx + bipf.dumps(lst)]
         return lst, self.rtt
@@ -137,7 +138,12 @@ class PubNode:
 
     def activate_feed(self, fid) -> None:
         if not fid in self.reps:
-            self.reps[fid] = replica.Replica(self.datapath, fid, None)
+            self.reps[fid] = replica.Replica(self.datapath, fid, self.vf)
+            # arm dmx for the activated feed
+            seq = self.reps[fid].state['max_seq'] + 1
+            nam = fid + seq.to_bytes(4, 'big') + self.reps[fid].state['prev']
+            dmx = self.compute_dmx(nam)
+            self.arm_dmx(dmx, self.in_entry, (fid, seq), f"{self.goset._key_to_ndx(fid)}.{seq}")
 
     def arm_dmx(self, dmx, fct=None, aux=None, comment=None):
         if fct == None:
